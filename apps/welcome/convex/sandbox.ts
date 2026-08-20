@@ -31,6 +31,7 @@ const codexHarness = createCodex({
   auth: 'ai-gateway',
   model: 'gpt-5.6-luna',
   reasoningEffort: 'low',
+  port: HARNESS_PORT,
   codexConfig: {
     service_tier: 'flex',
   },
@@ -96,7 +97,28 @@ function asResumeState(value: unknown): HarnessAgentResumeSessionState | undefin
   if (value === undefined) {
     return undefined;
   }
-  return value as HarnessAgentResumeSessionState;
+
+  const resumeState = value as HarnessAgentResumeSessionState & {
+    data?: {
+      bridge?: { port?: unknown };
+      threadId?: unknown;
+    };
+  };
+  if (
+    resumeState.data?.bridge?.port !== undefined &&
+    resumeState.data.bridge.port !== HARNESS_PORT
+  ) {
+    return {
+      ...resumeState,
+      data: {
+        ...(typeof resumeState.data.threadId === 'string'
+          ? { threadId: resumeState.data.threadId }
+          : {}),
+      },
+    } as HarnessAgentResumeSessionState;
+  }
+
+  return resumeState;
 }
 
 type Preview = {
@@ -341,6 +363,9 @@ export const sendPrompt = action({
         messageId: promptState.assistantMessageId,
       };
     } catch (error) {
+      console.error('Sandbox prompt failed', {
+        name: error instanceof Error ? error.name : typeof error,
+      });
       if (session) {
         try {
           recoveredResumeState = await session.detach();
