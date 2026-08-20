@@ -22,6 +22,7 @@ const REPOSITORY_URL = `https://github.com/${REPOSITORY}.git`;
 const REPOSITORY_DIRECTORY = 'disposabl.dev-convex' as const;
 const HARNESS_PORT = 4000;
 const FIRST_PREVIEW_PORT = 5173;
+const SANDBOX_TIMEOUT_MS = 5 * 60 * 1_000;
 const BUN_VERSION = '1.3.14' as const;
 const DEPENDENCY_BOOTSTRAP_HASH =
   'bun-1.3.14-lock-d82270b3889af261-repository-root-v2' as const;
@@ -47,6 +48,7 @@ const sandboxProvider = createVercelSandbox({
     depth: 1,
   },
   runtime: 'node24',
+  timeout: SANDBOX_TIMEOUT_MS,
   ports: [HARNESS_PORT],
   persistent: true,
   keepLastSnapshots: { count: 1 },
