@@ -317,17 +317,15 @@ export const sendPrompt = action({
       }
 
       const finalApps = await discoverApps(sandboxSession);
-      if (finalApps.join('\0') !== apps.join('\0')) {
-        previews = await syncPreviews({
-          sandboxSession,
-          apps: finalApps,
-          existing: previews,
-        });
-        await ctx.runMutation(internal.workspace.setPreviews, {
-          workspaceId: promptState.workspaceId,
-          previews,
-        });
-      }
+      previews = await syncPreviews({
+        sandboxSession,
+        apps: finalApps,
+        existing: previews,
+      });
+      await ctx.runMutation(internal.workspace.setPreviews, {
+        workspaceId: promptState.workspaceId,
+        previews,
+      });
 
       recoveredResumeState = await session.detach();
       await ctx.runMutation(internal.workspace.finishPrompt, {
