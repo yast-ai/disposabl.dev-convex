@@ -10,6 +10,7 @@
 
 import type * as myFunctions from "../myFunctions.js";
 import type * as sandbox from "../sandbox.js";
+import type * as workspace from "../workspace.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   myFunctions: typeof myFunctions;
   sandbox: typeof sandbox;
+  workspace: typeof workspace;
 }>;
 
 /**
