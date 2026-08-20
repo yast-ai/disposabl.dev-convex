@@ -15,7 +15,8 @@ import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
 import { action, env } from './_generated/server';
 
-const SANDBOX_NAME = 'disposabl-dev-convex' as const;
+const SANDBOX_NAME = 'disposabl-dev-convex-v2' as const;
+const SANDBOX_VERSION = 'repository-root-v2' as const;
 const REPOSITORY = 'yast-ai/disposabl.dev-convex' as const;
 const REPOSITORY_URL = `https://github.com/${REPOSITORY}.git`;
 const REPOSITORY_DIRECTORY = 'disposabl.dev-convex' as const;
@@ -23,7 +24,7 @@ const HARNESS_PORT = 4000;
 const FIRST_PREVIEW_PORT = 5173;
 const BUN_VERSION = '1.3.14' as const;
 const DEPENDENCY_BOOTSTRAP_HASH =
-  'bun-1.3.14-lock-d82270b3889af261' as const;
+  'bun-1.3.14-lock-d82270b3889af261-repository-root-v2' as const;
 
 const codexHarness = createCodex({
   auth: 'ai-gateway',
@@ -65,7 +66,7 @@ const sandboxConfig = {
   onBootstrap: async ({ session, workDir, abortSignal }) => {
     const result = await session.run({
       command:
-        'npm install --global "bun@$BUN_VERSION" && cd "$WORK_DIR" && bun install --frozen-lockfile',
+        'npm install --global "bun@$BUN_VERSION" && SANDBOX_ROOT=$(dirname "$WORK_DIR") && mkdir -p "$WORK_DIR" && find "$SANDBOX_ROOT" -mindepth 1 -maxdepth 1 ! -name "$(basename "$WORK_DIR")" -exec cp -a {} "$WORK_DIR/" \\; && cd "$WORK_DIR" && test -f package.json && test -f apps/welcome/package.json && test -f apps/hello-world/package.json && bun install --frozen-lockfile',
       env: {
         BUN_VERSION,
         WORK_DIR: workDir,
@@ -192,7 +193,7 @@ export const createPersistentSandbox = action({
   args: {},
   returns: v.object({
     harness: v.literal('codex'),
-    name: v.literal('disposabl-dev-convex'),
+    name: v.literal('disposabl-dev-convex-v2'),
     persistent: v.literal(true),
     repository: v.literal('yast-ai/disposabl.dev-convex'),
     workDir: v.literal('disposabl.dev-convex'),
@@ -250,6 +251,7 @@ export const sendPrompt = action({
     } = await ctx.runMutation(internal.workspace.beginPrompt, {
       ownerTokenIdentifier: identity.tokenIdentifier,
       prompt,
+      sandboxVersion: SANDBOX_VERSION,
     });
 
     let session: HarnessAgentSession | undefined;

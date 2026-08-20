@@ -12,6 +12,7 @@ export default defineSchema({
   workspaces: defineTable({
     ownerTokenIdentifier: v.string(),
     sessionId: v.string(),
+    sandboxVersion: v.optional(v.string()),
     resumeState: v.optional(v.any()),
     status: v.union(
       v.literal('idle'),

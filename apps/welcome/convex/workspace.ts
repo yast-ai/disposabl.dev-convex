@@ -147,6 +147,7 @@ export const beginPrompt = internalMutation({
   args: {
     ownerTokenIdentifier: v.string(),
     prompt: v.string(),
+    sandboxVersion: v.string(),
   },
   returns: v.object({
     workspaceId: v.id('workspaces'),
@@ -178,6 +179,25 @@ export const beginPrompt = internalMutation({
     }
     if (workspace.status === 'running') {
       throw new Error('A Codex turn is already running.');
+    }
+
+    if (workspace.sandboxVersion !== args.sandboxVersion) {
+      const workspaceId = workspace._id;
+      const stalePreviews = await ctx.db
+        .query('sandboxPreviews')
+        .withIndex('by_workspace_id_and_port', (q) =>
+          q.eq('workspaceId', workspaceId),
+        )
+        .take(50);
+      for (const preview of stalePreviews) {
+        await ctx.db.delete('sandboxPreviews', preview._id);
+      }
+      await ctx.db.patch('workspaces', workspaceId, {
+        sessionId: crypto.randomUUID(),
+        sandboxVersion: args.sandboxVersion,
+        resumeState: undefined,
+      });
+      workspace = (await ctx.db.get('workspaces', workspaceId)) ?? workspace;
     }
 
     await ctx.db.insert('messages', {
