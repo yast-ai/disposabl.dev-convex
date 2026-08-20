@@ -27,6 +27,8 @@ const message = v.object({
   status: messageStatus,
 });
 
+const STALE_RUN_MS = 10 * 60 * 1_000;
+
 async function requireIdentity(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
@@ -132,6 +134,37 @@ export const ensureCurrent = mutation({
     const identity = await requireIdentity(ctx);
     const existing = await findWorkspace(ctx, identity.tokenIdentifier);
     if (existing) {
+      if (
+        existing.status === 'running' &&
+        (existing.runningSince === undefined ||
+          Date.now() - existing.runningSince >= STALE_RUN_MS)
+      ) {
+        const recentMessages = await ctx.db
+          .query('messages')
+          .withIndex('by_workspace_id', (q) =>
+            q.eq('workspaceId', existing._id),
+          )
+          .order('desc')
+          .take(10);
+        const streamingMessage = recentMessages.find(
+          (messageDoc) => messageDoc.status === 'streaming',
+        );
+        if (streamingMessage) {
+          await ctx.db.patch('messages', streamingMessage._id, {
+            content:
+              streamingMessage.content ||
+              'The previous sandbox run stopped before it completed.',
+            status: 'error',
+          });
+        }
+        await ctx.db.patch('workspaces', existing._id, {
+          sessionId: crypto.randomUUID(),
+          resumeState: undefined,
+          runningSince: undefined,
+          status: 'error',
+          error: 'The previous sandbox run stopped before it completed. Retry your prompt.',
+        });
+      }
       return existing._id;
     }
 
@@ -214,6 +247,7 @@ export const beginPrompt = internalMutation({
     });
     await ctx.db.patch('workspaces', workspace._id, {
       status: 'running',
+      runningSince: Date.now(),
       error: undefined,
     });
 
@@ -318,6 +352,7 @@ export const finishPrompt = internalMutation({
     await ctx.db.patch('workspaces', args.workspaceId, {
       resumeState: args.resumeState,
       status: 'idle',
+      runningSince: undefined,
       error: undefined,
     });
     return null;
@@ -342,6 +377,7 @@ export const failPrompt = internalMutation({
     }
     await ctx.db.patch('workspaces', args.workspaceId, {
       status: 'error',
+      runningSince: undefined,
       error: args.error,
       ...(args.resumeState === undefined
         ? {}

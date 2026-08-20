@@ -14,6 +14,7 @@ export default defineSchema({
     sessionId: v.string(),
     sandboxVersion: v.optional(v.string()),
     resumeState: v.optional(v.any()),
+    runningSince: v.optional(v.number()),
     status: v.union(
       v.literal('idle'),
       v.literal('running'),

@@ -16,7 +16,7 @@ import type { Id } from './_generated/dataModel';
 import { action, env } from './_generated/server';
 
 const SANDBOX_NAME = 'disposabl-dev-convex-v2' as const;
-const SANDBOX_VERSION = 'repository-root-v2' as const;
+const SANDBOX_VERSION = 'repository-root-v3-detached-apps' as const;
 const REPOSITORY = 'yast-ai/disposabl.dev-convex' as const;
 const REPOSITORY_URL = `https://github.com/${REPOSITORY}.git`;
 const REPOSITORY_DIRECTORY = 'disposabl.dev-convex' as const;
@@ -163,18 +163,30 @@ async function syncPreviews({
   ]);
 
   for (const { app, port } of assigned) {
-    const result = await sandboxSession.run({
+    const workingDirectory = `${sandboxSession.defaultWorkingDirectory}/${REPOSITORY_DIRECTORY}/apps/${app}`;
+    const health = await sandboxSession.run({
+      command: 'curl --silent --fail "http://127.0.0.1:$PORT" >/dev/null',
+      env: { PORT: String(port) },
+    });
+    if (health.exitCode !== 0) {
+      await sandboxSession.spawn({
+        command:
+          'exec env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=.vercel.run bun run vite --host 0.0.0.0 --port "$PORT"',
+        workingDirectory,
+        env: { PORT: String(port) },
+      });
+    }
+
+    const ready = await sandboxSession.run({
       command:
-        'if ! curl --silent --fail "http://127.0.0.1:$PORT" >/dev/null; then cd "$WORK_DIR/apps/$APP" && nohup env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=.vercel.run bun run vite --host 0.0.0.0 --port "$PORT" >"/tmp/$APP-vite.log" 2>&1 </dev/null & fi',
+        'for attempt in $(seq 1 60); do curl --silent --fail "http://127.0.0.1:$PORT" >/dev/null && exit 0; sleep 0.5; done; exit 1',
       env: {
-        APP: app,
         PORT: String(port),
-        WORK_DIR: `${sandboxSession.defaultWorkingDirectory}/${REPOSITORY_DIRECTORY}`,
       },
     });
-    if (result.exitCode !== 0) {
+    if (ready.exitCode !== 0) {
       throw new Error(
-        `Could not start ${app} on port ${port}: ${result.stderr || result.stdout}`,
+        `Could not start ${app} on port ${port}: ${ready.stderr || ready.stdout}`,
       );
     }
   }

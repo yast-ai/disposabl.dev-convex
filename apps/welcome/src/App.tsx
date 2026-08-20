@@ -89,6 +89,10 @@ function Workspace() {
 
   useEffect(() => {
     void ensureWorkspace();
+    const interval = window.setInterval(() => {
+      void ensureWorkspace();
+    }, 30_000);
+    return () => window.clearInterval(interval);
   }, [ensureWorkspace]);
 
   useEffect(() => {
