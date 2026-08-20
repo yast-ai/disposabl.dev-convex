@@ -197,12 +197,7 @@ export const createPersistentSandbox = action({
     repository: v.literal('yast-ai/disposabl.dev-convex'),
     workDir: v.literal('disposabl.dev-convex'),
   }),
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('You must be signed in to create the sandbox.');
-    }
-
+  handler: async () => {
     await prepareHarnessSandboxTemplate({
       harness: codexHarness,
       sandboxProvider,
