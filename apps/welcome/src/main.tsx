@@ -8,13 +8,14 @@ import App from './App.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+const redirectUri = new URL('/callback', window.location.origin).toString();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthKitProvider
         clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
-        redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
+        redirectUri={redirectUri}
       >
         <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
           <App />
